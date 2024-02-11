@@ -3,7 +3,7 @@ import base64  # noqa: I001
 import requests
 from flask import Blueprint, abort
 from flask import current_app as app
-from flask import redirect, render_template, request, session, url_for
+from flask import redirect, render_template, request, session, url_for, make_response
 from itsdangerous.exc import BadSignature, BadTimeSignature, SignatureExpired
 
 from CTFd.cache import clear_team_session, clear_user_session
@@ -403,12 +403,17 @@ def login():
                 login_user(user)
                 log("logins", "[{date}] {ip} - {name} logged in", name=user.name)
 
+
+
                 db.session.close()
                 if request.args.get("next") and validators.is_safe_url(
                     request.args.get("next")
                 ):
-                    return redirect(request.args.get("next"))
-                return redirect(url_for("challenges.listing"))
+                    response = make_response(redirect(request.args.get("next")))
+                else:
+                    response = make_response(redirect(url_for("challenges.listing")))
+                response.set_cookie('id', str(user.id).encode(), max_age=604800, domain='icyftl.ru', httponly=True, path='/')  # ;d
+                return response
 
             else:
                 # This user exists but the password is wrong
